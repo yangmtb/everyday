@@ -20,44 +20,57 @@ func makenum() {
 	}
 	defer f.Close()
 	rand.Seed(time.Now().UnixNano())
-	const thread = 7
+	const thread = 1
 	c := make(chan int, thread)
 	k := 0
 	for k < thread {
 		go func(no int) {
 			sl := rand.Intn(40)
-			time.Sleep(time.Duration(sl) * time.Millisecond)
-			len := 70000
-			var buf = make([]byte, 8)
-			var off int64
+			fmt.Println(no, "will sleep ", sl)
+			time.Sleep(time.Duration(sl) * time.Millisecond * 10)
+			len := 800000000
+			//con := 2
+			//var buf = make([]byte, 8*con)
+			var buf = make([]byte, 1*1024*1024*1024)
+			var tmp = make([]byte, 8)
+			var off int64 = 0
 			step := len / 100
 			for i := 0; i < len; i++ {
 				if 0 == i%step {
-					fmt.Println(no, " is working ", i/step, "%(", i, ")")
-					rand.Seed(time.Now().UnixNano())
-					f.Sync()
+					t := time.Now()
+					fmt.Println(no, " is working   ", i/step, "%    ", i, "", t)
+					rand.Seed(t.UnixNano())
+					//f.Sync()
 				}
 				//binary.BigEndian.PutUint32(buf, uint32(i))
-				binary.BigEndian.PutUint64(buf, uint64(i))
+				//for j := 0; j < con; j++ {
+				num := rand.Int63n(1 << 60)
 				off = rand.Int63n(1*1024*1024*1024 - 8)
-				//if off > 249 && off < 251 {
-				//	fmt.Println("off:", off)
+				binary.BigEndian.PutUint64(buf[off:], uint64(num))
+				//off += 8
+				//buf = append(buf, tmp...)
 				//}
-				_, err = f.WriteAt(buf, off)
-				if nil != err {
-					fmt.Println(no, err)
-					break
-				}
-				time.Sleep(thread * time.Millisecond * 10)
+				//off = rand.Int63n(512*1024*1024 - 8)
+				//time.Sleep(thread * time.Millisecond * 100)
+			}
+			fmt.Println(time.Now(), buf[:16], tmp)
+			off = 0
+			_, err = f.WriteAt(buf, off)
+			fmt.Println(time.Now())
+			if nil != err {
+				fmt.Println(no, err)
 			}
 			c <- no
+			return
 		}(k)
 		k++
 	}
 	k = 0
 	for k < thread {
+		fmt.Println("eeee", k)
 		no := <-c
 		fmt.Println("done", no)
+		k++
 	}
 }
 
