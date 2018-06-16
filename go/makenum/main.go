@@ -16,33 +16,17 @@ func makenum(name string) {
 	}
 	defer f.Close()
 	rand.Seed(time.Now().UnixNano())
-<<<<<<< HEAD
-	const thread = 1
-=======
 	const thread = 5
->>>>>>> d7c9a25c377484bca1f55600e7211cdfb0766728
 	c := make(chan int, thread)
 	var buf = make([]byte, 1<<31)
 	k := 0
 	for k < thread {
 		go func(no int) {
-<<<<<<< HEAD
-			sl := rand.Intn(40)
-			fmt.Println(no, "will sleep ", sl)
-			time.Sleep(time.Duration(sl) * time.Millisecond * 10)
-			len := 800000000
-			//con := 2
-			//var buf = make([]byte, 8*con)
-			var buf = make([]byte, 1*1024*1024*1024)
-			var tmp = make([]byte, 8)
-			var off int64 = 0
-=======
 			//sl := rand.Intn(40)
 			//time.Sleep(time.Duration(sl) * time.Millisecond)
 			time.Sleep(time.Duration(no+1) * thread * time.Millisecond * 10)
 			len := 80000000
 			var off int64
->>>>>>> d7c9a25c377484bca1f55600e7211cdfb0766728
 			step := len / 100
 			var fu func(b []byte, v uint64)
 			if 0 == no%2 {
@@ -52,30 +36,6 @@ func makenum(name string) {
 			}
 			for i := 0; i < len; i++ {
 				if 0 == i%step {
-<<<<<<< HEAD
-					t := time.Now()
-					fmt.Println(no, " is working   ", i/step, "%    ", i, "", t)
-					rand.Seed(t.UnixNano())
-					//f.Sync()
-				}
-				//binary.BigEndian.PutUint32(buf, uint32(i))
-				//for j := 0; j < con; j++ {
-				num := rand.Int63n(1 << 60)
-				off = rand.Int63n(1*1024*1024*1024 - 8)
-				binary.BigEndian.PutUint64(buf[off:], uint64(num))
-				//off += 8
-				//buf = append(buf, tmp...)
-				//}
-				//off = rand.Int63n(512*1024*1024 - 8)
-				//time.Sleep(thread * time.Millisecond * 100)
-			}
-			fmt.Println(time.Now(), buf[:16], tmp)
-			off = 0
-			_, err = f.WriteAt(buf, off)
-			fmt.Println(time.Now())
-			if nil != err {
-				fmt.Println(no, err)
-=======
 					fmt.Println(no, "is working (", i/step, "%) ", i, "", buf[:16])
 					rand.Seed(time.Now().UnixNano())
 					//f.Sync()
@@ -88,7 +48,6 @@ func makenum(name string) {
 				//if off > 249 && off < 251 {
 				//	fmt.Println("off:", off)
 				//}
->>>>>>> d7c9a25c377484bca1f55600e7211cdfb0766728
 			}
 			c <- no
 			return
@@ -101,13 +60,10 @@ func makenum(name string) {
 		no := <-c
 		fmt.Println("done", no)
 		k++
-<<<<<<< HEAD
-=======
 	}
 	_, err = f.WriteAt(buf, 0)
 	if nil != err {
 		fmt.Println("write:", err)
->>>>>>> d7c9a25c377484bca1f55600e7211cdfb0766728
 	}
 }
 
