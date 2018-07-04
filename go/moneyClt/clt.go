@@ -41,12 +41,11 @@ func main() {
 	info.Memory = 20
 	info.Name = "yes"
 	info.TaskCount = 2
-	go sendHeart(conn)
+	//go sendHeart(conn)
 
 	i := 0
 	for i < 55 {
 		i++
-
 		go func(i int) {
 			tp := make([]byte, 4)
 			tp = append(tp, byte('x'))

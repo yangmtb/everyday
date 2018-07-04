@@ -1,7 +1,6 @@
 package main
 
 import (
-	"common"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,9 +10,6 @@ import (
 )
 
 func main() {
-	t := common.CltInfo{}
-	t.ID = 1
-	fmt.Println(t)
 	svr, err := net.Listen("tcp", "0.0.0.0:5555")
 	if nil != err {
 		log.Fatal(err)
@@ -30,7 +26,26 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(24 * time.Hour))
+	conn.SetDeadline(time.Now().Add(4 * time.Second))
+	buf, err := readXBytes(conn, 4)
+	if nil != err {
+		return
+	}
+	if 4 == n && 0x00 == buf[0] && 0x00 == buf[1] && 0x00 == buf[2] {
+		if buf[3] > 0 {
+			iplen, err := readXBytes(conn, 1)
+			if nil != err {
+				return
+			}
+			if iplen[0] > 0 {
+				ipbuf, err := readXBytes(conn, iplen[0])
+				if nil != err {
+					return
+				}
+				NewClt(conn, buf[3], string(ipbuf)).Handle()
+			}
+		}
+	}
 	for {
 		ty, err := readXBytes(conn, 1)
 		if nil != err {
@@ -80,7 +95,7 @@ func recvHeart(conn net.Conn) (err error) {
 	if nil != err {
 		return
 	}
-	var info common.CltInfo
+	var info CltInfo
 	err = json.Unmarshal(da, &info)
 	fmt.Println(info)
 	return
