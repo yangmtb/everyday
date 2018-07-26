@@ -1,9 +1,17 @@
 #ifndef __SUDOKU_HPP__
 #define __SUDOKU_HPP__
 
+#include <vector>
 #include <array>
 #include <ostream>
 
+enum class Direction{
+  Ascending,
+  Descending
+};
+
+
+using std::vector;
 using std::ostream;
 using std::array;
 
@@ -14,13 +22,16 @@ class Sudoku;
 class Grid
 {
 public:
-  Grid(int row, int col, int sign, int value = 0);
+  Grid() {}
+  Grid(int row, int col, int value = 0);
   ~Grid() {}
   bool IsOpend() { return mOpend; }
   friend ostream & operator<< (ostream &os, const Grid &g) {
     os << "row:" << g.mRow << " col:" << g.mCol << " sign:" << g.mSign << " value:" << g.mValue;
     return os;
   }
+  int GetValue() const { return mValue; }
+  void SetValue(int v) { mValue = v; }
 
 private:
   int mValue;
@@ -34,8 +45,16 @@ private:
 class Sign
 {
 public:
+  Sign() {}
   Sign(int sign);
-  ~Sign(){}
+  ~Sign() {}
+  friend ostream & operator<< (ostream &os, const Sign &s) {
+    for (auto x : s.mGrids) {
+      os << x << "\n";
+    }
+    return os;
+  }
+  //bool isValid();
 
 private:
   int mSign;
@@ -46,10 +65,30 @@ class Sudoku
 {
 public:
   Sudoku();
+  friend ostream & operator<< (ostream &os, const Sudoku &s) {
+    for (auto x : s.mGrids) {
+      os << x << "\n";
+    }
+    return os;
+  }
+  void Show();
+  bool Solve(Direction d = Direction::Ascending);
 
 private:
-  array<Sign, 9> mSigns;
+  void init(int count = 28);
+  static void randGen(array<Grid, 9*9> &da);
+  static bool checkValue(array<Grid, 9*9> &da, int n, int key);
+  static bool dfsByAsc(array<Grid, 9*9> &da, int n);
+  static bool dfsByDesc(array<Grid, 9*9> &da, int n);
+  static bool dfsByRand(array<Grid, 9*9> &da, int n);
+  static bool diff(const array<Grid, 9*9> a, const array<Grid, 9*9> b);
+
+private:
+  array<Grid, 9*9> mGrids;
+  //array<Grid, 9*9> mDone;
 };
+
+vector<int> genRandQueue();
 
 /*
 typedef array<array<int, 9>, 9> Arr;
