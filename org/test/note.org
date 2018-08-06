@@ -3,8 +3,11 @@
 * All task [0%]
 ** TODO cpp [0%]
 *** TODO atomic
-*** TODO shared memory
+    atomic_fetch_add
+    atomic_fetch_sub
+*** TODO shared memory [0%]
 **** TODO shmget
+     file:./cpp.org
 **** TODO mmap
 *** TODO stl
 **** TODO vector [10%]
@@ -25,3 +28,6 @@
 ** TODO system [0%]
 *** TODO memory struct
 ** TODO next
+** TODO 源码阅读 [0%]
+*** TODO redis [0%]
+    file:./redis.org
