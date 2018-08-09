@@ -1,0 +1,33 @@
+# +TITLE: This is the test note
+
+* All task [0%]
+** TODO cpp [0%]
+*** TODO atomic
+    atomic_fetch_add
+    atomic_fetch_sub
+*** TODO shared memory [0%]
+**** TODO shmget
+     file:./cpp.org
+**** TODO mmap
+*** TODO stl
+**** TODO vector [10%]
+**** TODO array
+**** TODO map
+***** TODO red-block tree
+*** TODO thread
+**** TODO epoll
+** TODO big data [0%]
+** TODO arch [0%]
+*** TODO fcitx
+*** TODO feh
+** TODO tmux [10%]
+** TODO emacs [0%]
+*** TODO emacs
+*** TODO spacemacs
+*** TODO evil
+** TODO system [0%]
+*** TODO memory struct
+** TODO next
+** TODO 源码阅读 [0%]
+*** TODO redis [0%]
+    file:./redis.org

@@ -1,0 +1,80 @@
+* Redis [0%]
+  来源:https://github.com/antirez/redis
+  参考链接:http://blog.huangz.me/diary/2014/how-to-read-redis-source-code.html
+** TODO 底层数据结构 [0%]
+*** TODO 动态字符串
+    sds.h
+    sds.c
+*** TODO 双端链表
+    adlist.h
+    adlist.c
+*** TODO 字典
+    dict.h
+    dict.c
+*** TODO 跳跃表
+    redis.h中的zskiplist结构和zskiplistNode结构,以及t_zset.c中所有以zsl开头的函数,比如zslCreate,zslInsert,zslDeleteNode,等等
+*** TODO HyperLogLog
+    hyperloglog.c中hllhdr结构,以及所有以hll开头的函数
+** TODO 内存编码数据结构 [0%]
+*** TODO 整数集合
+    intset.h
+    intset.c
+*** TODO 压缩列表
+    ziplist.h
+    ziplist.c
+** TODO 数据结构 [0%]
+*** TODO 对象
+    object.c
+*** TODO 字符串键
+    t_string.c
+*** TODO 列表键
+    t_list.c
+*** TODO 散列键
+    t_hash.c
+*** TODO 集合键
+    t_set.c
+*** TODO 有序集合键
+    t_zset.c中除zsl开头的函数之外的所有函数
+*** TODO HyperLogLog键
+    hyperloglog.c中所有以pf开头的函数
+** TODO 数据库实现相关 [0%]
+*** TODO 数据库实现
+    redis.h中的redisDb结构,以及db.c
+*** TODO 数据库通知功能实现
+    notify.c
+*** TODO RDB持久化实现
+    rdb.h
+    rdb.c
+*** TODO AOF持久化实现
+    aof.c
+*** 选读
+**** TODO 发布与订阅功能
+     redis.h中pubsubPattern结构,以及pubsub.c
+**** TODO 事务功能
+     redis.h中multiState结构,multiCmd结构,以及multi.c
+**** TODO SORT命令
+     sort.c
+**** TODO GETBIT,SETBIT等二进制位操作命令
+     bitops.c
+** TODO 客户端与服务器相关 [0%]
+*** TODO 事件处理器实现(基于Reactor模式)
+    ae.c,以及任意一个ae_*.c文件
+*** TODO 网络连接库
+    负责发送命令回复和接受命令请求,同时负责创建/销毁客户端,以及通信协议分析等工作
+    networking.c
+*** TODO 单机Redis服务器的实现
+    redis.h和redis.c中和单机Redis服务器有关的部分
+*** 选读
+**** TODO Lua脚本功能
+     scripting.c
+**** TODO 慢查询功能
+     slowlog.c
+**** TODO 监视器功能
+     monitor.c
+** TODO 多机功能 [0%]
+*** TODO 复制功能
+    replication.c
+*** TODO Redis Sentinel的实现
+    sentinel.c
+*** TODO Redis 集群的实现
+    cluster.c
