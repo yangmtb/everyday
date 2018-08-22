@@ -1,7 +1,7 @@
 * Redis [0%]
   来源:https://github.com/antirez/redis
   参考链接:http://blog.huangz.me/diary/2014/how-to-read-redis-source-code.html
-** TODO 底层数据结构 [33%]
+** TODO 底层数据结构 [50%]
 *** TODO 分配,重新分配,释放 [0%]
     sdsalloc.h
     zmalloc.h
@@ -14,12 +14,14 @@
     CLOSED: [2018-08-11 六 19:31]
     adlist.h
     adlist.c
-*** TODO 字典 [0%]
+*** DONE 字典 [100%]
+    CLOSED: [2018-08-20 一 19:26]
     dict.h
     dict.c
     宏用do{}while(0) 包围起来避免出错
+    scan的方式比较特别(高位向低位遍历)
 *** TODO 跳跃表 [0%]
-    redis.h中的zskiplist结构和zskiplistNode结构,以及t_zset.c中所有以zsl开头的函数,比如zslCreate,zslInsert,zslDeleteNode,等等
+    server.h中的zskiplist结构和zskiplistNode结构,以及t_zset.c中所有以zsl开头的函数,比如zslCreate,zslInsert,zslDeleteNode,等等
 *** TODO HyperLogLog [0%]
     hyperloglog.c中hllhdr结构,以及所有以hll开头的函数
 ** TODO 内存编码数据结构 [0%]
