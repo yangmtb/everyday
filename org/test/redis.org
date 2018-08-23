@@ -1,4 +1,4 @@
-* Redis [16%]
+* Redis [12%]
   来源:https://github.com/antirez/redis
   参考链接:http://blog.huangz.me/diary/2014/how-to-read-redis-source-code.html
 ** TODO 底层数据结构 [66%]
@@ -93,3 +93,13 @@
     sentinel.c
 *** TODO Redis 集群的实现
     cluster.c
+** TODO 自我总结 [0%]
+*** TODO type:OBJ_STRING
+    encoding:OBJ_ENCODING_RAW        原生sds
+    encoding:OBJ_ENCODING_EMBSTR     长度小于44时
+    encoding:OBJ_ENCODING_INT        longlong
+*** TODO type:OBJ_LIST
+    encoding:OBJ_ENCODING_QUICKLIST  底层结构为quicklist
+    encoding:OBJ_ENCODING_ZIPLIST    底层结构为ziplist     <uint32_t zlbytes> <uint32_t zltail> <uint16_t zllen>(len为entry个数)  <entry> <entry> <entry>  <uint8_t zlend>(0xFF)
+                                                                                                                                  /\
+                                                                                                                         <prevlen>(1个字节或5个字节)
