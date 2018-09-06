@@ -102,4 +102,4 @@
     encoding:OBJ_ENCODING_QUICKLIST  底层结构为quicklist
     encoding:OBJ_ENCODING_ZIPLIST    底层结构为ziplist     <uint32_t zlbytes> <uint32_t zltail> <uint16_t zllen>(len为entry个数)  <entry> <entry> <entry>  <uint8_t zlend>(0xFF)
                                                                                                                                   /\
-                                                                                                                         <prevlen>(1个字节或5个字节)
+                                                                                                                         <prevlen>(1个字节或5个字节) <encoding>(1,2,5个字节) <content>(可能为0)
