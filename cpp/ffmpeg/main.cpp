@@ -54,7 +54,7 @@ extern "C"
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 #include <libavdevice/avdevice.h>
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 #ifdef __cplusplus
 };
 #endif
