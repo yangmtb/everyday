@@ -2,6 +2,7 @@
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <iostream>
 #include <string>
+#include <map>
 #include "shape.hpp"
 
 typedef websocketpp::server<websocketpp::config::asio> server;
@@ -9,6 +10,7 @@ typedef websocketpp::server<websocketpp::config::asio> server;
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
+using std::map;
 using std::string;
 using std::stringstream;
 using std::cout;
@@ -17,8 +19,14 @@ using std::endl;
 // pull out the type of messages sent by our config
 typedef server::message_ptr message_ptr;
 
-Shape *layout = new Shape();
-Shape *a = nullptr;//new Shape(layout);
+struct Game {
+  Shape *layout;
+  Shape *a;
+};
+
+map<void *, Game *> All;
+//Shape *layout = new Shape();
+//Shape *a = nullptr;//new Shape(layout);
 
 bool validate(server *s, websocketpp::connection_hdl hdl) {
   // do something
@@ -45,41 +53,57 @@ void on_close(websocketpp::connection_hdl hdl) {
 
 // define a callback to handle incoming message
 void on_message(server *s, websocketpp::connection_hdl hdl, message_ptr msg) {
+  auto it = All.find(hdl.lock().get());
+  Game *game = nullptr;
+  if (All.end() == it) {
+    game = new Game;
+    cout << "new game " << game << endl;
+    game->layout = new Shape();
+    All[hdl.lock().get()] = game;
+  } else {
+    game = it->second;
+    cout << "exist game " << game << endl;
+  }
   cout << "on_message called with hdl: " << hdl.lock().get() << " and message: " << msg->get_payload() << " opcode:" << msg->get_opcode() << endl;
   // check for a special command to instruct the server to stop listening so it can be cleanly exited.
+  if (nullptr == game) {
+    cout << "boom" << endl;
+    s->stop_listening();
+    return;
+  }
   if ("stop-listening" == msg->get_payload()) {
     s->stop_listening();
     return;
   } else if ("begin" == msg->get_payload()) {
     cout << "game begin" << endl;
-    a = new Shape(layout);
-    if (nullptr == a) {
+    game->a = new Shape(game->layout);
+    if (nullptr == game->a) {
       cout << "a is nullptr begin" << endl;
       s->stop_listening();
       return;
     }
   } else if ("left" == msg->get_payload()) {
-    if (nullptr == a) {
+    if (nullptr == game->a) {
       cout << "a is nullptr left" << endl;
       s->stop_listening();
       return;
     }
-    a->Left();
+    game->a->Left();
   } else if ("right" == msg->get_payload()) {
-    a->Right();
+    game->a->Right();
   } else if ("rotate" == msg->get_payload()) {
-    a->Rotate();
+    game->a->Rotate();
   } else if ("down" == msg->get_payload()) {
-    if (nullptr == a) {
+    if (nullptr == game->a) {
       cout << "a is nullptr down" << endl;
       s->stop_listening();
       return;
     }
-    if (!a->Down()) {
+    if (!game->a->Down()) {
       cout << "time to new a shape" << endl;
-      cout << "eliminate:" << layout->Eliminate() << endl;
-      a = new Shape(layout);
-      if (!a->IsValid()) {
+      cout << "eliminate:" << game->layout->Eliminate() << endl;
+      game->a = new Shape(game->layout);
+      if (!game->a->IsValid()) {
         cout << "game over" << endl;
         s->stop_listening();
         return;
@@ -91,7 +115,7 @@ void on_message(server *s, websocketpp::connection_hdl hdl, message_ptr msg) {
     return;
   }
   //a->Show();
-  string content = a->GetString();
+  string content = game->a->GetString();
   try {
     s->send(hdl, content, msg->get_opcode());
     //s->send(hdl, msg->get_payload(), msg->get_opcode());
@@ -101,6 +125,8 @@ void on_message(server *s, websocketpp::connection_hdl hdl, message_ptr msg) {
 }
 
 int main(const int argc, const char *argv[]) {
+  cout << sizeof(void *) << " " << sizeof(long) << endl;
+  //return 0;
   server echo_server;
   try {
     // set logging settings
