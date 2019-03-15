@@ -53,6 +53,9 @@ void on_close(websocketpp::connection_hdl hdl) {
 
 // define a callback to handle incoming message
 void on_message(server *s, websocketpp::connection_hdl hdl, message_ptr msg) {
+  static int ccnt = 0;
+  cout << "ccnt:" << ccnt++ << endl;
+  cout << "on_message called with hdl: " << hdl.lock().get() << " and message: " << msg->get_payload() << " opcode:" << msg->get_opcode() << endl;
   auto it = All.find(hdl.lock().get());
   Game *game = nullptr;
   if (All.end() == it) {
@@ -64,7 +67,6 @@ void on_message(server *s, websocketpp::connection_hdl hdl, message_ptr msg) {
     game = it->second;
     cout << "exist game " << game << endl;
   }
-  cout << "on_message called with hdl: " << hdl.lock().get() << " and message: " << msg->get_payload() << " opcode:" << msg->get_opcode() << endl;
   // check for a special command to instruct the server to stop listening so it can be cleanly exited.
   if (nullptr == game) {
     cout << "boom" << endl;

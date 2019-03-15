@@ -1,6 +1,10 @@
 #ifndef __GAME_HPP__
 #define __GAME_HPP__
 
+#include <queue>
+
+using std::priority_queue;
+
 enum State {
             Ready,
             Running,
@@ -13,6 +17,10 @@ public:
   Game();
   virtual ~Game() {}
 
+  bool Left();
+  bool Right();
+  bool Down();
+  bool Rotate();
   bool Run();
 
 private:
