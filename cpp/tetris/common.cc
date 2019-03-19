@@ -392,6 +392,94 @@ SHA1 & SHA1::operator<<(const unsigned char msgEle)
  */
 void SHA1::ProcessMessageBlock()
 {
+    const unsigned K[] =    {               // Constants defined for SHA-1
+                                0x5A827999,
+                                0x6ED9EBA1,
+                                0x8F1BBCDC,
+                                0xCA62C1D6
+                            };
+    int         t;                          // Loop counter
+    unsigned    temp;                       // Temporary word value
+    unsigned    W[80];                      // Word sequence
+    unsigned    A, B, C, D, E;              // Word buffers
+
+    /*
+     *  Initialize the first 16 words in the array W
+     */
+    for(t = 0; t < 16; t++)
+    {
+        W[t] = ((unsigned) MessageBlock[t * 4]) << 24;
+        W[t] |= ((unsigned) MessageBlock[t * 4 + 1]) << 16;
+        W[t] |= ((unsigned) MessageBlock[t * 4 + 2]) << 8;
+        W[t] |= ((unsigned) MessageBlock[t * 4 + 3]);
+    }
+
+    for(t = 16; t < 80; t++)
+    {
+       W[t] = CircularShift(1,W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16]);
+    }
+
+    A = H[0];
+    B = H[1];
+    C = H[2];
+    D = H[3];
+    E = H[4];
+
+    for(t = 0; t < 20; t++)
+    {
+        temp = CircularShift(5,A) + ((B & C) | ((~B) & D)) + E + W[t] + K[0];
+        temp &= 0xFFFFFFFF;
+        E = D;
+        D = C;
+        C = CircularShift(30,B);
+        B = A;
+        A = temp;
+    }
+
+    for(t = 20; t < 40; t++)
+    {
+        temp = CircularShift(5,A) + (B ^ C ^ D) + E + W[t] + K[1];
+        temp &= 0xFFFFFFFF;
+        E = D;
+        D = C;
+        C = CircularShift(30,B);
+        B = A;
+        A = temp;
+    }
+
+    for(t = 40; t < 60; t++)
+    {
+        temp = CircularShift(5,A) +
+               ((B & C) | (B & D) | (C & D)) + E + W[t] + K[2];
+        temp &= 0xFFFFFFFF;
+        E = D;
+        D = C;
+        C = CircularShift(30,B);
+        B = A;
+        A = temp;
+    }
+
+    for(t = 60; t < 80; t++)
+    {
+        temp = CircularShift(5,A) + (B ^ C ^ D) + E + W[t] + K[3];
+        temp &= 0xFFFFFFFF;
+        E = D;
+        D = C;
+        C = CircularShift(30,B);
+        B = A;
+        A = temp;
+    }
+
+    H[0] = (H[0] + A) & 0xFFFFFFFF;
+    H[1] = (H[1] + B) & 0xFFFFFFFF;
+    H[2] = (H[2] + C) & 0xFFFFFFFF;
+    H[3] = (H[3] + D) & 0xFFFFFFFF;
+    H[4] = (H[4] + E) & 0xFFFFFFFF;
+
+    MessageBlockIndex = 0;
+}
+/*void SHA1::ProcessMessageBlock()
+{
   const unsigned K[] = { // constants defined for SHA-1
                         0x5A827999,
                         0x6ED9EBA1,
@@ -404,7 +492,7 @@ void SHA1::ProcessMessageBlock()
   unsigned A,B,C,D,E; // word buffers
   // initialize the first 16 words in the array W
   for (t = 0; t < 16; ++t) {
-    W[t] = ((unsigned)MessageBlock[t*4]) << 24;
+    W[t]  = ((unsigned)MessageBlock[t*4]) << 24;
     W[t] |= ((unsigned)MessageBlock[t*4] + 1) << 16;
     W[t] |= ((unsigned)MessageBlock[t*4] + 2) << 8;
     W[t] |= ((unsigned)MessageBlock[t*4] + 3);
@@ -459,7 +547,7 @@ void SHA1::ProcessMessageBlock()
   H[3] = (H[3] + D) & 0xFFFFFFFF;
   H[4] = (H[4] + E) & 0xFFFFFFFF;
   MessageBlockIndex = 0;
-}
+}*/
 
 /*
  *  PadMessage
@@ -501,12 +589,12 @@ void SHA1::PadMessage()
   }
   MessageBlock[56] = (LenHigh >> 24) & 0xFF;
   MessageBlock[57] = (LenHigh >> 16) & 0xFF;
-  MessageBlock[58] = (LenHigh >> 8) & 0xFF;
-  MessageBlock[59] = (Length_High) & 0xFF;
-  MessageBlock[60] = (Length_Low >> 24) & 0xFF;
-  MessageBlock[61] = (Length_Low >> 16) & 0xFF;
-  MessageBlock[62] = (Length_Low >> 8) & 0xFF;
-  MessageBlock[63] = (Length_Low) & 0xFF;
+  MessageBlock[58] = (LenHigh >> 8 ) & 0xFF;
+  MessageBlock[59] = (LenHigh) & 0xFF;
+  MessageBlock[60] = (LenLow >> 24) & 0xFF;
+  MessageBlock[61] = (LenLow >> 16) & 0xFF;
+  MessageBlock[62] = (LenLow >> 8 ) & 0xFF;
+  MessageBlock[63] = (LenLow) & 0xFF;
   ProcessMessageBlock();
 }
 

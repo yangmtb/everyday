@@ -35,11 +35,17 @@ public:
 class Shape
 {
 public:
-  Shape() : mLayout(nullptr) {}
+  Shape() : mLayout(nullptr), mCenter{-1,-1} {}
   Shape(const Shape &s);
   Shape(Shape *layout);
   virtual ~Shape() {};
 
+  void SetLayout(Shape *layout) {
+    mLayout = layout;
+  }
+  Shape * GetLayout() {
+    return mLayout;
+  }
   bool Left();
   bool Right();
   bool Down();

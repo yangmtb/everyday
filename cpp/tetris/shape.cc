@@ -77,7 +77,9 @@ bool Shape::Left()
   if (!tmp.IsValid()) {
     return false;
   }
-  mCenter.y--;
+  if (-1 != mCenter.x) {
+    mCenter.y--;
+  }
   mContent = tmp.mContent;
   return true;
 }
@@ -91,7 +93,9 @@ bool Shape::Right()
   if (!tmp.IsValid()) {
     return false;
   }
-  mCenter.y++;
+  if (-1 != mCenter.x) {
+    mCenter.y++;
+  }
   mContent = tmp.mContent;
   return true;
 }
@@ -130,8 +134,9 @@ bool Shape::Rotate()
 void Shape::Show() const
 {
   for (auto x : mContent) {
-    cout << "pos:" << x.position.x << "," << x.position.y << endl;
+    cout << "pos:" << x.position.x << "," << x.position.y << "\t";
   }
+  cout << endl;
   return;
 }
 
@@ -154,16 +159,16 @@ string Shape::GetString() const
     tmp += to_string(g.color);
     tmp += "},";
   }
-  for (auto g : mLayout->mContent) {
+  for (auto g0 : mLayout->mContent) {
     tmp += "{";
     tmp += "\"x\":";
-    tmp += to_string(int(g.position.x));
+    tmp += to_string(int(g0.position.x));
     tmp += ",";
     tmp += "\"y\":";
-    tmp += to_string(int(g.position.y));
+    tmp += to_string(int(g0.position.y));
     tmp += ",";
     tmp += "\"c\":";
-    tmp += to_string(g.color);
+    tmp += to_string(g0.color);
     tmp += "},";
   }
   auto pos = tmp.find_last_of(',');
