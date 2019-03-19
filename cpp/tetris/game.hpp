@@ -7,6 +7,7 @@
 #include <mutex>
 #include <atomic>
 
+using std::string;
 using std::mutex;
 using std::priority_queue;
 
@@ -46,7 +47,7 @@ public:
   bool Run();
   void Continue() { mState = State::Running; }
   void Pause() { mState = State::Pause; }
-  void Over() { mState = State::Over; }
+  void Over() { mTimer.Expire(); mState = State::Over; }
   bool IsOver() { return State::Over == mState; }
   string GetJson();
   bool addOperate(Move);
@@ -55,6 +56,7 @@ private:
   bool addDown();
 
 private:
+  string mID;
   Timer mTimer;
   int mMaxQueueSize;
   priority_queue<Operate> mOperateQueue;
@@ -62,7 +64,7 @@ private:
   int mFd;
   Shape *mLayout;
   Shape *mMove;
-  //Shape *mNext;
+  Shape *mNext;
   std::atomic<State> mState;
   mutex mMutexState;
   std::condition_variable mCandState;

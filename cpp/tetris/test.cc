@@ -9,6 +9,7 @@
 #include "timer.hpp"
 #include "game.hpp"
 #include "network_interface.h"
+#include "db.hpp"
 
 using std::cin;
 using std::cerr;
@@ -116,6 +117,16 @@ std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 int main(const int argc, const char *argv[])
 {
+  DB db;
+  cout << db.Connect("root", "1234", "chat", "localhost", 3306) << endl;
+  vector<vector<string>> out;
+  cout << db.Exec("select * from chat_account", out) << endl;
+  for (auto a : out) {
+    for (auto b : a) {
+      cout << b << endl;
+    }
+  }
+  //return 0;
   //NETWORK_INTERFACE->run();
   //return 0;
   //testThread();

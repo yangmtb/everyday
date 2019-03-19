@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <cstdlib>
 #include "websocket_handler.h"
 #include "websocket_respond.h"
 
@@ -6,13 +7,15 @@ using std::string;
 using std::cout;
 using std::endl;
 
+std::map<int, Game *> Game_map;
+
 Websocket_Handler::Websocket_Handler(int fd):
 		buff_(),
 		status_(WEBSOCKET_UNCONNECT),
 		header_map_(),
 		fd_(fd),
-		request_(new Websocket_Request),
-		mGame(new Game)
+		request_(new Websocket_Request)
+		//mGame(new Game)
 {
 }
 
@@ -28,7 +31,8 @@ Websocket_Handler::Websocket_Handler(int fd, Game *game):
 
 Websocket_Handler::~Websocket_Handler()
 {
-	delete mGame;
+  if (request_) delete request_;
+	//if (mGame) delete mGame;
 }
 
 int Websocket_Handler::process(){
@@ -38,7 +42,19 @@ int Websocket_Handler::process(){
 	request_->fetch_websocket_info(buff_);
 	string tmp(request_->GetContent());
 	//cout << "buf:" << tmp << endl;
-	if ("begin" == tmp) {
+	if ("join" == tmp) {
+    int fd = atoi(tmp.substr(4).c_str());
+    auto it = Game_map.find(fd);
+    if (it != Game_map.end()) {
+      mGame = it->second;
+    } else {
+      return 1;
+    }
+  } else if ("begin" == tmp) {
+    if (nullptr == mGame) {
+      mGame = new Game;
+			Game_map[fd_] = mGame;
+    }
 		mGame->Run();
 		mTimer.StartTimer(200, [this]() {
 			if (mGame->IsOver()) {
@@ -88,7 +104,7 @@ int Websocket_Handler::handshark(){
 	return send_data(request, strlen(request));
 }
 
-void Websocket_Handler::parse_str(char *request){  
+void Websocket_Handler::parse_str(char *request){
 	strcat(request, "HTTP/1.1 101 Switching Protocols\r\n");
 	strcat(request, "Connection: upgrade\r\n");
 	strcat(request, "Sec-WebSocket-Accept: ");

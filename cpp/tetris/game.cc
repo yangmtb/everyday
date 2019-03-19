@@ -3,6 +3,9 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <thread>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 
 using std::cout;
 using std::cerr;
@@ -10,15 +13,18 @@ using std::endl;
 
 Game::Game(int fd) : mFd(fd), mLayout(nullptr), mMove(nullptr), mState(Ready), mLevel(1), mScore(0), mMaxQueueSize(64)
 {
+  boost::uuids::uuid u = boost::uuids::random_generator()();
+  mID = boost::uuids::to_string(u);
+  //cout << "id:" << mID << endl;
   mLayout = new Shape();
   mMove = new Shape(mLayout);
-  //mNext = new Shape(mLayout);
+  mNext = new Shape(mLayout);
 }
 
 Game::~Game()
 {
   if (mMove) delete mMove;
-  //if (mNext) delete mNext;
+  if (mNext) delete mNext;
   if (mLayout) delete mLayout;
 }
 
@@ -92,18 +98,18 @@ bool Game::Run()
                            cout << "elimi: " << eli << endl;
                            mScore += eli;
                          }
-                         //mNext->SetLayout(mLayout);
-                         //delete mMove;
-                         //mMove = nullptr;
+                         delete mMove;
+                         mMove = nullptr;
                          //cout << "will next:" << endl;
-                         //mMove = mNext;
-                         mMove = new Shape(mLayout);
+                         mNext->SetLayout(mLayout);
+                         mMove = mNext;
+                         mNext = nullptr;
                          if (!mMove->IsValid()) {
                            mState = State::Over;
                            std::cout << "game over" << std::endl;
                            return;
                          }
-                         //mNext = new Shape(mLayout);
+                         mNext = new Shape(nullptr);
                          //cout << "new " << endl;
                        }
                        break;
@@ -133,6 +139,11 @@ string Game::GetJson()
   tmp += "\"score\":";
   tmp += to_string(mScore);
   tmp += ",";
+  if (mNext) {
+    tmp += "\"next\":";
+    tmp += mNext->GetString();
+    tmp += ",";
+  }
   tmp += "\"body\":";
   string body = mMove->GetString();
   tmp += body;
@@ -145,28 +156,29 @@ bool Game::addDown()
   std::lock_guard<mutex> locker(mMutexQueue);
   if (State::Running == mState) {
     if (mOperateQueue.size() < mMaxQueueSize) {
-      Operate op;
-      op.operate = MoveDown;
-      op.priority = 1;
-      mOperateQueue.emplace(op);
+      mOperateQueue.emplace(Operate{operate:MoveDown, priority:1});
     } else {
       cout << mOperateQueue.size() << " to big" << endl;
       return false;
     }
     mCandState.notify_one();
+    return true;
   }
-  return true;
+  return false;
 }
 
 bool Game::addOperate(Move op)
 {
   std::lock_guard<mutex> locker(mMutexQueue);
-  if (mOperateQueue.size() < mMaxQueueSize) {
-    mOperateQueue.emplace(Operate{operate:op, priority:2});
-  } else {
-    cout << mOperateQueue.size() << " to big" << endl;
-    return false;
+  if (State::Running == mState) {
+    if (mOperateQueue.size() < mMaxQueueSize) {
+      mOperateQueue.emplace(Operate{operate:op, priority:2});
+    } else {
+      cout << mOperateQueue.size() << " to big" << endl;
+      return false;
+    }
+    mCandState.notify_one();
+    return true;
   }
-  mCandState.notify_one();
-  return true;
+  return false;
 }

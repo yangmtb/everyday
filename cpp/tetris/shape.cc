@@ -143,9 +143,6 @@ void Shape::Show() const
 string Shape::GetString() const
 {
   string tmp;
-  if (nullptr == mLayout) {
-    return tmp;
-  }
   tmp += "[";
   for (auto g : mContent) {
     tmp += "{";
@@ -159,17 +156,19 @@ string Shape::GetString() const
     tmp += to_string(g.color);
     tmp += "},";
   }
-  for (auto g0 : mLayout->mContent) {
-    tmp += "{";
-    tmp += "\"x\":";
-    tmp += to_string(int(g0.position.x));
-    tmp += ",";
-    tmp += "\"y\":";
-    tmp += to_string(int(g0.position.y));
-    tmp += ",";
-    tmp += "\"c\":";
-    tmp += to_string(g0.color);
-    tmp += "},";
+  if (nullptr != mLayout) {
+    for (auto g0 : mLayout->mContent) {
+      tmp += "{";
+      tmp += "\"x\":";
+      tmp += to_string(int(g0.position.x));
+      tmp += ",";
+      tmp += "\"y\":";
+      tmp += to_string(int(g0.position.y));
+      tmp += ",";
+      tmp += "\"c\":";
+      tmp += to_string(g0.color);
+      tmp += "},";
+    }
   }
   auto pos = tmp.find_last_of(',');
   if (string::npos != pos) {
