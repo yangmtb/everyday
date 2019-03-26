@@ -1,5 +1,13 @@
 #include "websocket.hpp"
 #include <sstream>
+#include <iostream>
+#include <cerrno>
+#include <cstring>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+using std::cout;
+using std::endl;
 
 WebsocketHandler::WebsocketHandler(int fd)
   : mFD(fd), mWritten(0), mStatus(WEBSOCKET_UNCONNECT)
@@ -30,7 +38,7 @@ int WebsocketHandler::recv()
   while ((n = ::read(mFD, buf, sizeof(buf))) > 0) {
     mReaded.append(buf, n);
   }
-  if (n < 0 && (EAGIN == errno || EWOULDBLOCK == errno)) {
+  if (n < 0 && (EAGAIN == errno || EWOULDBLOCK == errno)) {
     return 1;
   } else if (n < 0) {
     cout << "read " << mFD << " errno: " << errno << " " << strerror(errno) << endl;
@@ -101,5 +109,5 @@ int WebsocketHandler::fetchHttpInfo()
       mHeaderMap[key] = value;
     }
   }
-  return 0
+  return 0;
 }

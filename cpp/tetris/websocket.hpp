@@ -3,6 +3,7 @@
 
 #include "base64.h"
 #include "common.hpp"
+#include "timer.hpp"
 #include <string>
 #include <map>
 

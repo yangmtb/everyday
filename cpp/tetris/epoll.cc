@@ -60,7 +60,7 @@ void handleAccept(int efd, int fd) {
   exit_if(r < 0, "getpeername failed");
   printf("accept a connection from %s:%d\n", inet_ntoa(raddr.sin_addr), ntohs(raddr.sin_port));
   setNonBlock(cfd);
-  //wsMap[cfd] = new Websocket_Handler(cfd);
+  wsMap[cfd] = new WebsocketHandler(cfd);
   updateEvents(efd, cfd, EPOLLIN | EPOLLET, EPOLL_CTL_ADD);
 }
 struct Con {
@@ -153,7 +153,9 @@ void loop_once(int efd, int lfd, int waitms) {
         //handleAccept(efd, fd);
       } else {
         cout << "=================== read: " << fd << endl;
-        executor.Commit(handleRead, efd, fd);
+        auto ws = wsMap[fd];
+        executor.Commit([ws]() { ws->process(); });
+        //executor.Commit(handleRead, efd, fd);
         //handleRead(efd, fd);
       }
     } else if (events & EPOLLOUT) {
