@@ -37,7 +37,7 @@ private:
 private:
 	Timer mTimer;
 	Game *mGame;
-	char buff_[2048];
+	char buff_[4096];
 	WEBSOCKET_STATUS status_;
 	HEADER_MAP header_map_;
 	int fd_;

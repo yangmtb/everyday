@@ -1,157 +1,105 @@
-#include <websocketpp/server.hpp>
-#include <websocketpp/config/asio_no_tls.hpp>
-#include <iostream>
-#include <string>
-#include <map>
-#include "shape.hpp"
+#include "websocket.hpp"
+#include <sstream>
 
-typedef websocketpp::server<websocketpp::config::asio> server;
-
-using websocketpp::lib::placeholders::_1;
-using websocketpp::lib::placeholders::_2;
-using websocketpp::lib::bind;
-using std::map;
-using std::string;
-using std::stringstream;
-using std::cout;
-using std::endl;
-
-// pull out the type of messages sent by our config
-typedef server::message_ptr message_ptr;
-
-struct Game {
-  Shape *layout;
-  Shape *a;
-};
-
-map<void *, Game *> All;
-//Shape *layout = new Shape();
-//Shape *a = nullptr;//new Shape(layout);
-
-bool validate(server *s, websocketpp::connection_hdl hdl) {
-  // do something
-  return true;
+WebsocketHandler::WebsocketHandler(int fd)
+  : mFD(fd), mWritten(0), mStatus(WEBSOCKET_UNCONNECT)
+{
 }
 
-void on_http(server *s, websocketpp::connection_hdl hdl) {
-  server::connection_ptr con = s->get_con_from_hdl(hdl);
-  string res = con->get_request_body();
-  stringstream ss;
-  ss << "got HTTP request with " << res.size() << " bytes of body data.";
-  con->set_body(ss.str());
-  con->set_status(websocketpp::http::status_code::ok);
+WebsocketHandler::~WebsocketHandler()
+{
 }
 
-void on_fail(server *s, websocketpp::connection_hdl hdl) {
-  server::connection_ptr con = s->get_con_from_hdl(hdl);
-  cout << "fail handler: " << con->get_ec() << " " << con->get_ec().message() << endl;
+int WebsocketHandler::process()
+{
+  int ret = recv();
+  if (-1 == ret) {
+    return -1;
+  }
+  if (WEBSOCKET_UNCONNECT) {
+    return handshark();
+  }
+  return 0;
 }
 
-void on_close(websocketpp::connection_hdl hdl) {
-  cout << "close handler: " << hdl.lock().get() << endl;
+int WebsocketHandler::recv()
+{
+  char buf[4096] = {0};
+  int n = 0;
+  mReaded = "";
+  while ((n = ::read(mFD, buf, sizeof(buf))) > 0) {
+    mReaded.append(buf, n);
+  }
+  if (n < 0 && (EAGIN == errno || EWOULDBLOCK == errno)) {
+    return 1;
+  } else if (n < 0) {
+    cout << "read " << mFD << " errno: " << errno << " " << strerror(errno) << endl;
+    return -1;
+  }
+  return 0;
 }
 
-// define a callback to handle incoming message
-void on_message(server *s, websocketpp::connection_hdl hdl, message_ptr msg) {
-  static int ccnt = 0;
-  cout << "ccnt:" << ccnt++ << endl;
-  cout << "on_message called with hdl: " << hdl.lock().get() << " and message: " << msg->get_payload() << " opcode:" << msg->get_opcode() << endl;
-  auto it = All.find(hdl.lock().get());
-  Game *game = nullptr;
-  if (All.end() == it) {
-    game = new Game;
-    cout << "new game " << game << endl;
-    game->layout = new Shape();
-    All[hdl.lock().get()] = game;
+int WebsocketHandler::handshark()
+{
+  if (-1 == fetchHttpInfo()) {
+    return -1;
+  }
+  if (-1 == generateUpgradeString()) {
+    return -1;
+  }
+  mStatus = WEBSOCKET_HANDSHARKED;
+  return 0;
+}
+
+int WebsocketHandler::generateUpgradeString()
+{
+  mWriteBuff += "HTTP/1.1 101 Switching Protocols\r\n";
+  mWriteBuff += "Connection: upgrade\r\n";
+  mWriteBuff += "Sec-WebSocket-Accept: ";
+  if (mHeaderMap.end() == mHeaderMap.find("Sec-Websocket-Key")) {
+    return -1;
+  }
+  string serverKey = mHeaderMap["Sec-Websocket-Key"];
+  serverKey += MAGIC_KEY;
+  SHA1 s1;
+  unsigned int msgDigest[5];
+  s1.Reset();
+  s1 << serverKey.c_str();
+  s1.Result(msgDigest);
+  for (int i = 0; i < 5; ++i) {
+    msgDigest[i] = htonl(msgDigest[i]);
+  }
+  serverKey = base64Encode(reinterpret_cast<const unsigned char *>(msgDigest), 20);
+  serverKey += "\r\n";
+  mWriteBuff += serverKey;
+  mWriteBuff += "Upgrade: websocket\r\n\r\n";
+  return 0;
+}
+
+int WebsocketHandler::fetchHttpInfo()
+{
+  std::stringstream s(mReaded);
+  string request;
+  std::getline(s, request);
+  if ('\r' == request[request.size()-1]) {
+    request.erase(request.end()-1);
   } else {
-    game = it->second;
-    cout << "exist game " << game << endl;
+    return -1;
   }
-  // check for a special command to instruct the server to stop listening so it can be cleanly exited.
-  if (nullptr == game) {
-    cout << "boom" << endl;
-    s->stop_listening();
-    return;
-  }
-  if ("stop-listening" == msg->get_payload()) {
-    s->stop_listening();
-    return;
-  } else if ("begin" == msg->get_payload()) {
-    cout << "game begin" << endl;
-    game->a = new Shape(game->layout);
-    if (nullptr == game->a) {
-      cout << "a is nullptr begin" << endl;
-      s->stop_listening();
-      return;
+  string header;
+  string::size_type end;
+  while (std::getline(s, header) && "\r" != header) {
+    if ('\r' != header[header.size()-1]) {
+      continue;
+    } else {
+      header.erase(header.end()-1);
     }
-  } else if ("left" == msg->get_payload()) {
-    if (nullptr == game->a) {
-      cout << "a is nullptr left" << endl;
-      s->stop_listening();
-      return;
+    end = header.find(": ", 0);
+    if (string::npos != end) {
+      string key = header.substr(0, end);
+      string value = header.substr(end+2);
+      mHeaderMap[key] = value;
     }
-    game->a->Left();
-  } else if ("right" == msg->get_payload()) {
-    game->a->Right();
-  } else if ("rotate" == msg->get_payload()) {
-    game->a->Rotate();
-  } else if ("down" == msg->get_payload()) {
-    if (nullptr == game->a) {
-      cout << "a is nullptr down" << endl;
-      s->stop_listening();
-      return;
-    }
-    if (!game->a->Down()) {
-      cout << "time to new a shape" << endl;
-      cout << "eliminate:" << game->layout->Eliminate() << endl;
-      game->a = new Shape(game->layout);
-      if (!game->a->IsValid()) {
-        cout << "game over" << endl;
-        s->stop_listening();
-        return;
-      }
-    }
-  } else {
-    cout << "boom :" << msg->get_payload() << endl;
-    s->stop_listening();
-    return;
   }
-  //a->Show();
-  string content = game->a->GetString();
-  try {
-    s->send(hdl, content, msg->get_opcode());
-    //s->send(hdl, msg->get_payload(), msg->get_opcode());
-  } catch (websocketpp::exception const & e) {
-    cout << "echo failed because: (" << e.what() << ")" << endl;
-  }
-}
-
-int main(const int argc, const char *argv[]) {
-  cout << sizeof(void *) << " " << sizeof(long) << endl;
-  //return 0;
-  server echo_server;
-  try {
-    // set logging settings
-    echo_server.set_access_channels(websocketpp::log::alevel::all);
-    echo_server.clear_access_channels(websocketpp::log::alevel::frame_payload);
-    // initialize asio
-    echo_server.init_asio();
-    echo_server.set_reuse_addr(true);
-    // register our message handler
-    echo_server.set_message_handler(bind(&on_message, &echo_server, ::_1, ::_2));
-    echo_server.set_http_handler(bind(&on_http, &echo_server, ::_1));
-    echo_server.set_fail_handler(bind(&on_fail, &echo_server, ::_1));
-    echo_server.set_close_handler(&on_close);
-    echo_server.set_validate_handler(bind(&validate, &echo_server, ::_1));
-    // listen on port 9999
-    echo_server.listen(9999);
-    // start the server accept loop
-    echo_server.start_accept();
-    // start the asio io_service run loop
-    echo_server.run();
-  } catch (websocketpp::exception const & e) {
-    cout << "exception:" << e.what() << endl;
-  } catch (...) {
-    cout << "other exception" << endl;
-  }
+  return 0
 }

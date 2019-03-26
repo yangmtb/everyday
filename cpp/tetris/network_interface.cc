@@ -22,12 +22,12 @@ Network_Interface::Network_Interface():
 		exit(1);
 }
 
-Network_Interface::~Network_Interface(){
+Network_Interface::~Network_Interface() {
 }
 
-int Network_Interface::init(){
+int Network_Interface::init() {
 	listenfd_ = socket(AF_INET, SOCK_STREAM, 0);
-	if(listenfd_ == -1){
+	if(listenfd_ == -1) {
 		DEBUG_LOG("创建套接字失败!");
 		return -1;
 	}
@@ -38,7 +38,7 @@ int Network_Interface::init(){
 	server_addr.sin_port = htons(PORT);
 	int optval = 1;
 	setsockopt(listenfd_, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
-	if(-1 == bind(listenfd_, (struct sockaddr *)(&server_addr), sizeof(server_addr))){
+	if(-1 == bind(listenfd_, (struct sockaddr *)(&server_addr), sizeof(server_addr))) {
 		DEBUG_LOG("绑定套接字失败!");
 		return -1;
 	}
@@ -53,21 +53,20 @@ int Network_Interface::init(){
 	return 0;
 }
 
-int Network_Interface::epoll_loop(){
+int Network_Interface::epoll_loop() {
 	struct sockaddr_in client_addr;
 	socklen_t clilen;
 	int nfds = 0;
 	int fd = 0;
 	int bufflen = 0;
 	struct epoll_event events[MAXEVENTSSIZE];
-	while(true){
+	while(true) {
 		nfds = epoll_wait(epollfd_, events, MAXEVENTSSIZE, TIMEWAIT);
-		for(int i = 0; i < nfds; i++){
-			if(events[i].data.fd == listenfd_){
+		for(int i = 0; i < nfds; i++) {
+			if(events[i].data.fd == listenfd_) {
 				fd = accept(listenfd_, (struct sockaddr *)&client_addr, &clilen);
 				ctl_event(fd, true);
-			}
-			else if(events[i].events & EPOLLIN){
+			}	else if(events[i].events & EPOLLIN) {
 				if((fd = events[i].data.fd) < 0)
 					continue;
 				Websocket_Handler *handler = websocket_handler_map_[fd];
@@ -75,8 +74,7 @@ int Network_Interface::epoll_loop(){
 					continue;
 				if((bufflen = read(fd, handler->getbuff(), BUFFLEN)) <= 0){
 					ctl_event(fd, false);
-				}
-				else{
+				}	else {
 					if (1 == handler->process()) {
 						ctl_event(fd, false);
 					}
