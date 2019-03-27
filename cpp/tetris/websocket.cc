@@ -118,7 +118,7 @@ int WebSocket::Read(string &str) const
 {
   cout << "ws read" << endl;
   int ret = Socket::Read(str);
-  if (0 != ret) {
+  if (0 != ret && 1 != ret) {
     return ret;
   }
   cout << "unpack ws" << endl;
@@ -241,47 +241,26 @@ int WebSocket::pack(string &str) const
 
 int WebSocket::generateUpgradeString(string &out)
 {
-  cout << "out:" << out << endl;
 	out += "HTTP/1.1 101 Switching Protocols\r\n";
 	out += "Connection: upgrade\r\n";
 	out += "Sec-WebSocket-Accept: ";
-	std::string server_key = mHeaders["Sec-WebSocket-Key"];
-	server_key += MAGIC_KEY;
-
-	SHA1 sha;
-	unsigned int message_digest[5];
-	sha.Reset();
-	sha << server_key.c_str();
-
-	sha.Result(message_digest);
-	for (int i = 0; i < 5; i++) {
-		message_digest[i] = htonl(message_digest[i]);
-	}
-	server_key = base64Encode(reinterpret_cast<const unsigned char*>(message_digest),20);
-	server_key += "\r\n";
-	out += server_key.c_str();
-	out += "Upgrade: websocket\r\n\r\n";
-  cout << "out:" << out << endl;
-  /*out += "HTTP/1.1 101 Switching Protocols\r\n";
-  out += "Connection: upgrade\r\n";
-  out += "Sec-WebSocket-Accept: ";
   if (mHeaders.end() == mHeaders.find("Sec-WebSocket-Key")) {
     return -1;
   }
-  string serverKey(mHeaders["Sec-Websocket-Key"]);
-  serverKey += MAGIC_KEY;
-  SHA1 s1;
-  unsigned int msgDigest[5];
-  s1.Reset();
-  s1 << serverKey.c_str();
-  s1.Result(msgDigest);
-  for (int i = 0; i < 5; ++i) {
-    msgDigest[i] = htonl(msgDigest[i]);
-  }
-  serverKey = base64Encode(reinterpret_cast<const unsigned char *>(msgDigest), 20);
-  serverKey += "\r\n";
-  out += serverKey;
-  out += "Upgrade: websocket\r\n\r\n";*/
+	std::string serverKey = mHeaders.at("Sec-WebSocket-Key");
+	serverKey += MAGIC_KEY;
+	SHA1 s1;
+	unsigned int messageDigest[5];
+	s1.Reset();
+	s1 << serverKey.c_str();
+	s1.Result(messageDigest);
+	for (int i = 0; i < 5; i++) {
+		messageDigest[i] = htonl(messageDigest[i]);
+	}
+	serverKey = base64Encode(reinterpret_cast<const unsigned char*>(messageDigest),20);
+	serverKey += "\r\n";
+	out += serverKey.c_str();
+	out += "Upgrade: websocket\r\n\r\n";
   return 0;
 }
 

@@ -24,6 +24,10 @@ int Socket::Read(string &str) const
   int n = 0;
   while ((n = ::read(mFD, buf, sizeof(buf))) > 0) {
     str.append(buf, n);
+    for (int i = 0; i < n; ++i) {
+      printf("%x ", buf[i]);
+    }
+    cout << endl;
   }
   if (n < 0 && (EAGAIN == errno || EWOULDBLOCK == errno)) {
     cerr << "again? " << str << endl;

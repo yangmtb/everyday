@@ -104,7 +104,7 @@ int Service::loop(int waitms)
                             if (0 != handleRead(fd)) {
                               cerr << "read error" << endl;
                             }
-                            UpdateEvents(mEpollFD, fd, EPOLLOUT | EPOLLET, EPOLL_CTL_MOD);
+                            //UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_MOD);
                           });
         }
       } else if (EPOLLOUT & events) {
@@ -149,7 +149,6 @@ int Service::handleAccept()
 
 int Service::handleRead(int fd)
 {
-  cout << "socket read" << endl;
   try {
     WebSocket *s = mWebSockets.at(fd);
     if (s->IsHandShaked()) {
@@ -164,6 +163,7 @@ int Service::handleRead(int fd)
       if (0 != ret) {
         return ret;
       }
+      cout << "handshake done" << endl;
     }
   } catch (std::exception &e) {
     cerr << "at err: " << e.what() << endl;
