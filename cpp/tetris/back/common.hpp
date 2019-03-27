@@ -4,9 +4,6 @@
 #include <chrono>
 #include <random>
 #include <string>
-#include <fcntl.h>
-#include <sys/epoll.h>
-#include <sys/socket.h>
 
 using std::string;
 
@@ -73,8 +70,5 @@ private:
   bool Computed; // is the digest computed
   bool Corrupted; // is the message digest corruped
 };
-
-int SetNonBlock(int fd);
-int UpdateEvents(int efd, int fd, int events, int op);
 
 #endif//__COMMON_HPP__

@@ -1,10 +1,4 @@
 #include "common.hpp"
-#include <iostream>
-#include <cstring>
-
-using std::cerr;
-using std::cout;
-using std::endl;
 
 std::minstd_rand0 gRandom (std::chrono::system_clock::now().time_since_epoch().count());
 
@@ -625,33 +619,4 @@ void SHA1::PadMessage()
 unsigned SHA1::CircularShift(int bits, unsigned word)
 {
   return ((word << bits) & 0xFFFFFFFF) | ((word & 0xFFFFFFFF) >> (32-bits));
-}
-
-int SetNonBlock(int fd)
-{
-  int flags = fcntl(fd, F_GETFL, 0);
-  if (flags < 0) {
-    cerr << "fcntl get failed" << endl;
-    return -1;
-  }
-  int ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-  if (ret < 0) {
-    cerr << "fcntl set nonblock failed" << endl;
-    return -1;
-  }
-  return 0;
-}
-
-int UpdateEvents(int efd, int fd, int events, int op)
-{
-  epoll_event ev;
-  memset(&ev, 0, sizeof(ev));
-  ev.events = events;
-  ev.data.fd = fd;
-  int ret = epoll_ctl(efd, op, fd, &ev);
-  if (0 != ret) {
-    cerr << "epoll_ctl failed" << endl;
-    return -1;
-  }
-  return 0;
 }

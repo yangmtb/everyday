@@ -7,9 +7,9 @@
 
 #define DEBUG_ENABLE
 #ifdef DEBUG_ENABLE
-#define Dprintf(fmt, args...) fprintf(stdout, "[debug] [%s %d] "fmt"\n", __FILE__, __LINE__, ##args);
+#define Dprint(fmt, args...) fprintf(stdout, "[debug] [%s %d] "fmt"\n", __FILE__, __LINE__, ##args);
 #else
-#define Dprintf(fmt, ...)
+#define Dprint(fmt, ...)
 #endif
 
 using std::string;

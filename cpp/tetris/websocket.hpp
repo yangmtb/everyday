@@ -1,9 +1,8 @@
 #ifndef __WEBSOCKET_HPP__
 #define __WEBSOCKET_HPP__
 
-#include "base64.h"
 #include "common.hpp"
-#include "timer.hpp"
+#include "socket.hpp"
 #include <string>
 #include <map>
 
@@ -14,32 +13,31 @@ using std::map;
 
 enum WEBSOCKET_STATUS {
                        WEBSOCKET_UNCONNECT = 0,
-                       WEBSOCKET_HANDSHARKED,
+                       WEBSOCKET_HANDSHAKED,
 };
 
-class WebsocketHandler
+class WebSocket : public Socket
 {
 public:
-  WEBSOCKET_STATUS mStatus;
-  string mReaded;
-  string mWriteBuff;
-  size_t mWritten;
-
-private:
-  Timer mTimer;
-  int mFD;
-  map<string, string> mHeaderMap;
+  WebSocket(int fd) : Socket(fd), mStatus(WEBSOCKET_UNCONNECT) {};
+  virtual ~WebSocket() {}
 
 public:
-  WebsocketHandler(int fd);
-  virtual ~WebsocketHandler();
-  int process();
+  int test();
+  int IsHandShaked() { return WEBSOCKET_HANDSHAKED == mStatus; }
+  int Handshake();
+  int Read(string &str) const;
+  int Write(const string &str) const;
 
 private:
-  int recv();
-  int handshark();
-  int generateUpgradeString();
-  int fetchHttpInfo();
+  int generateUpgradeString(string &out);
+  int fetchHttpInfo(const string &str);
+  int unpack(string &str) const;
+  int pack(string &str) const;
+
+private:
+  map<string, string> mHeaders;
+  WEBSOCKET_STATUS mStatus;
 };
 
 #endif//__WEBSOCKET_HPP__

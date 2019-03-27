@@ -20,7 +20,6 @@ enum WEBSOCKET_STATUS {
 };
 
 typedef std::map<std::string, std::string> HEADER_MAP;
-extern std::map<int, Game *> Game_map;
 
 class Websocket_Handler{
 public:
@@ -37,7 +36,7 @@ private:
 private:
 	Timer mTimer;
 	Game *mGame;
-	char buff_[4096];
+	char buff_[2048];
 	WEBSOCKET_STATUS status_;
 	HEADER_MAP header_map_;
 	int fd_;
