@@ -3,9 +3,9 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <thread>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/uuid_generators.hpp>
+//#include <boost/uuid/uuid.hpp>
+//#include <boost/uuid/uuid_io.hpp>
+//#include <boost/uuid/uuid_generators.hpp>
 
 using std::cout;
 using std::cerr;
@@ -13,8 +13,8 @@ using std::endl;
 
 Game::Game(int fd) : mFd(fd), mLayout(nullptr), mMove(nullptr), mState(Ready), mLevel(1), mScore(0), mMaxQueueSize(64)
 {
-  boost::uuids::uuid u = boost::uuids::random_generator()();
-  mID = boost::uuids::to_string(u);
+  //boost::uuids::uuid u = boost::uuids::random_generator()();
+  //mID = boost::uuids::to_string(u);
   //cout << "id:" << mID << endl;
   mLayout = new Shape();
   mMove = new Shape(mLayout);

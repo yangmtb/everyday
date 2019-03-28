@@ -2,6 +2,7 @@
 #define __SERVICE_HPP__
 
 #include "timer.hpp"
+#include "socket.hpp"
 #include "websocket.hpp"
 #include "game.hpp"
 #include <string>
@@ -13,6 +14,7 @@ using std::mutex;
 using std::map;
 
 struct Group {
+  Socket *s;
   WebSocket *ws;
   Game *game;
 };

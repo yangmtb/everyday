@@ -80,32 +80,61 @@ int Service::loop(int waitms)
 {
   const int cMaxEvents = 66;
   std::threadpool executor{cMaxEvents};
-  epoll_event activeEvents[cMaxEvents];
   while (true) {
+    epoll_event activeEvents[cMaxEvents];
     int n = epoll_wait(mEpollFD, activeEvents, cMaxEvents, waitms);
     if (n < 0) {
       cerr << "epoll wait error" << endl;
       return -1;
     }
-    //cout << "wait:" << n << endl;
+//cout << "wait:" << n << endl;
     for (int i = 0; i < n; ++i) {
       int fd = activeEvents[i].data.fd;
       uint32_t events = activeEvents[i].events;
-      if ((EPOLLIN | EPOLLERR) & events) {
+      if (EPOLLRDHUP & events) {
+        // will close
+        cout << "rdhup " << fd << endl;
+        auto g = mGroups.at(fd);
+        if (nullptr != g->s) {
+          delete g->s;
+          g->s = nullptr;
+        }
+        if (nullptr != g->ws) {
+          delete g->ws;
+          g->ws = nullptr;
+        }
+        if (nullptr != g->game) {
+          delete g->game;
+          g->game = nullptr;
+        }
+        mGroups.erase(fd);
+        delete g;
+        g = nullptr;
+        UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_DEL);
+        close(fd);
+      } else if ((EPOLLIN | EPOLLERR) & events) {
         if (fd == mListenFD) {
           // accept
+          if (0 != handleAccept()) {
+            cerr << "accept error" << endl;
+          }
+continue;
           executor.Commit([this] () {
                             if (0 != handleAccept()) {
                               cerr << "accept error" << endl;
                             }
-                          });
+                            });
         } else {
           // read
           executor.Commit([this, fd] () {
                             int ret = handleRead(fd);
                             if (2 == ret || 3 == ret) {
-                              cout << "will close" << endl;
+                              cout << "will close " << fd << endl;
                               auto g = mGroups.at(fd);
+                              if (nullptr != g->s) {
+                                delete g->s;
+                                g->s = nullptr;
+                              }
                               if (nullptr != g->ws) {
                                 delete g->ws;
                                 g->ws = nullptr;
@@ -117,10 +146,11 @@ int Service::loop(int waitms)
                               mGroups.erase(fd);
                               delete g;
                               g = nullptr;
-                              close(fd);
                               UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_DEL);
+                              close(fd);
+                            } else {
+                              UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_MOD);
                             }
-                            UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_MOD);
                           });
         }
       } else if (EPOLLOUT & events) {
@@ -156,11 +186,12 @@ int Service::handleAccept()
     cerr << "getpeername error" << endl;
     return -1;
   }
-  cout << "addr " << inet_ntoa(raddr.sin_addr) << ":" << ntohs(raddr.sin_port) << endl;
+  cout << cfd << " addr " << inet_ntoa(raddr.sin_addr) << ":" << ntohs(raddr.sin_port) << endl;
   if (-1 == SetNonBlock(cfd)) {
     return -1;
   }
   Group *g = new Group;
+  g->s = new Socket(cfd);
   g->ws = new WebSocket(cfd);
   g->game = nullptr;
   mGroups.try_emplace(cfd, g);
@@ -172,22 +203,24 @@ int Service::handleRead(int fd)
 {
   try {
     Group *g = mGroups.at(fd);
-    WebSocket *s = g->ws;
+    Socket *s = g->s;
+    WebSocket *ws = g->ws;
     Game *game = g->game;
-    /*string out;
+    string out;
     int ret = s->Read(out);
     if (2 == ret) { // close
       return ret;
     } else if (3 == ret) {
-      cerr << "read boom" << endl;
+      //cerr << "read boom" << endl;
       return ret;
     }
-    cout << "recv:" << out << endl;
+    cout << out.length() << " recv: " << out << endl;
     ret = s->Write(out); // echo
-    cout << "write:" << ret << endl;*/
-    if (s->IsHandShaked()) {
+    //cout << "write:" << ret << endl;
+    return 0;
+    if (ws->IsHandShaked()) {
       string command;
-      int ret = s->Read(command);
+      int ret = ws->Read(command);
       if (0 != ret) {
         return ret;
       }
@@ -199,7 +232,7 @@ int Service::handleRead(int fd)
           g->game = game;
         }
         game->Run();
-        mTimer.StartTimer(100, [this, game, s]() {
+        mTimer.StartTimer(100, [this, game, ws]() {
                                  if (game->IsOver()) {
                                    mTimer.Expire();
                                    return;
@@ -208,7 +241,7 @@ int Service::handleRead(int fd)
                                  if (cnt.empty()) {
                                    cout << "empty json" << endl;
                                  } else {
-                                   int ret = s->Write(cnt);
+                                   int ret = ws->Write(cnt);
                                    if (2 == ret) {
                                      // should close
                                      return;
@@ -230,7 +263,7 @@ int Service::handleRead(int fd)
         mTimer.Expire();
         game->Pause();
       } else if ("continue" == command) {
-        mTimer.StartTimer(100, [this, game, s]() {
+        mTimer.StartTimer(100, [this, game, ws]() {
                                  if (game->IsOver()) {
                                    mTimer.Expire();
                                    return;
@@ -239,7 +272,7 @@ int Service::handleRead(int fd)
                                  if (cnt.empty()) {
                                    cout << "empty json" << endl;
                                  } else {
-                                   int ret = s->Write(cnt);
+                                   int ret = ws->Write(cnt);
                                    if (2 == ret) {
                                      // should close
                                      return;
@@ -255,12 +288,12 @@ int Service::handleRead(int fd)
       } else {
         cout << command.length() << " unknow command:" << command << endl;
         command = "";
-        ret = s->Read(command);
+        ret = ws->Read(command);
         cout << ret << " len:" << command.length() << " str:" << command << endl;
         //return 3;
       }
     } else {
-      int ret = s->Handshake();
+      int ret = ws->Handshake();
       if (0 != ret) {
         return ret;
       }
@@ -275,6 +308,6 @@ int Service::handleRead(int fd)
 
 int Service::handleWrite(int fd)
 {
-  cout << "socket write" << endl;
+  //cout << "socket write " << fd << endl;
   return 0;
 }

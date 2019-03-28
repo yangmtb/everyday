@@ -22,15 +22,20 @@ int Socket::Read(string &str) const
   int n = 0;
   while ((n = read(mFD, buf, sizeof(buf))) > 0) {
     str.append(buf, n);
+    if (n < 4096) {
+      break;
+    }
   }
   if (n < 0 && (EAGAIN == errno || EWOULDBLOCK == errno)) {
     cerr << errno <<" again? " << str << endl;
     return 1;
   } else if (n < 0) {
-    cerr << n << " read error " << strerror(errno) << endl;
+    if (ECONNRESET != errno) {
+      cerr << n << " read error " << errno << " " << strerror(errno) << endl;
+    }
     return 3;
   } else if (0 == n) {
-    cerr << "read 0" << endl;
+    //cerr << "read 0" << endl;
     return 2;
   }
   return 0;

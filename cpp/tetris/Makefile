@@ -13,5 +13,9 @@ $(TARGET): $(SRCS:.cc=.o)
 test: test.cc common.cc socket.cc websocket.cc service.cc
 	$(CC) $(FLAG) $(LIB) -o $@ $^
 
+clt: client.cc socket.cc
+	$(CC) $(CXXFLAGS) $(LIBDIR) $(LIB) -o $@ $^
+	-rm -f *.o *.d
+
 clean:
 	-rm -f *.o *.d
