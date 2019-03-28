@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iostream>
 #include <cerrno>
+#include <cassert>
 #include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -116,12 +117,14 @@ int WebsocketHandler::fetchHttpInfo()
 
 int WebSocket::Read(string &str) const
 {
-  cout << "ws read" << endl;
   int ret = Socket::Read(str);
-  if (0 != ret && 1 != ret) {
+  if (2 == ret) {
+    // should close
+    return ret;
+  } else if (3 == ret) {
+    // error
     return ret;
   }
-  cout << "unpack ws" << endl;
   ret = unpack(str);
   if (-1 == ret) {
     return ret;
@@ -158,9 +161,7 @@ int WebSocket::Handshake()
 
 int WebSocket::Write(const string &str) const
 {
-  cout << "ws write" << endl;
   string tmp(str);
-  cout << "pack ws" << endl;
   int ret = pack(tmp);
   if (-1 == ret) {
     return ret;
@@ -180,12 +181,6 @@ int WebSocket::unpack(string &str) const
   opcode = data[pos] & 0x0F;
   pos++;
   mask = data[pos] >> 7;
-  if (1 == mask) {
-    for (int i = 0; i < 4; ++i) {
-      maskingKey[i] = data[pos+i];
-    }
-    pos += 4;
-  }
   payloadLength = data[pos] & 0x7F;
   pos++;
   if (126 == payloadLength) {
@@ -199,18 +194,30 @@ int WebSocket::unpack(string &str) const
     pos += 4;
     payloadLength = ntohl(length);
   }
+  if (1 == mask) {
+    for (int i = 0; i < 4; ++i) {
+      maskingKey[i] = data[pos+i];
+    }
+    pos += 4;
+  }
   try {
-    char *tmp = new char[payloadLength];
-    memset(tmp, 0, payloadLength);
+    char *tmp = new char[payloadLength]();
+    //memset(tmp, 0, payloadLength);
     if (1 != mask) {
+      cout << "unmask" << endl;
       memcpy(tmp, data+pos, payloadLength);
     } else {
       for (uint i = 0; i < payloadLength; ++i) {
         int j = i % 4;
         tmp[i] = data[pos+i] ^ maskingKey[j];
+        printf("%x ", tmp[i]);
       }
+      cout << endl;
     }
-    str = tmp;
+    string other(tmp, payloadLength);
+    str = other;
+    cout << payloadLength << " " << str.length() << " " << other.length() << endl;
+    assert(payloadLength == str.length());
     delete[] tmp;
   } catch (const std::exception &e) {
     cerr << "exception " << e.what() << endl;
@@ -299,7 +306,7 @@ int WebSocket::test()
   int ret = pack(tm);
   cout << "length:" << tm.length() << endl;
   for (int i = 0; i < tm.length(); ++i) {
-    printf("%X ", (unsigned char *)(tm.data()[i]));
+    printf("%X ", (unsigned char)(tm.data()[i]));
   }
   cout << endl;
   return 0;

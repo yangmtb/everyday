@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -86,7 +87,7 @@ int Service::loop(int waitms)
       cerr << "epoll wait error" << endl;
       return -1;
     }
-    cout << "wait:" << n << endl;
+    //cout << "wait:" << n << endl;
     for (int i = 0; i < n; ++i) {
       int fd = activeEvents[i].data.fd;
       uint32_t events = activeEvents[i].events;
@@ -101,10 +102,25 @@ int Service::loop(int waitms)
         } else {
           // read
           executor.Commit([this, fd] () {
-                            if (0 != handleRead(fd)) {
-                              cerr << "read error" << endl;
+                            int ret = handleRead(fd);
+                            if (2 == ret || 3 == ret) {
+                              cout << "will close" << endl;
+                              auto g = mGroups.at(fd);
+                              if (nullptr != g->ws) {
+                                delete g->ws;
+                                g->ws = nullptr;
+                              }
+                              if (nullptr != g->game) {
+                                delete g->game;
+                                g->game = nullptr;
+                              }
+                              mGroups.erase(fd);
+                              delete g;
+                              g = nullptr;
+                              close(fd);
+                              UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_DEL);
                             }
-                            //UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_MOD);
+                            UpdateEvents(mEpollFD, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_MOD);
                           });
         }
       } else if (EPOLLOUT & events) {
@@ -123,7 +139,7 @@ int Service::loop(int waitms)
 
 int Service::handleAccept()
 {
-  cout << "socket accept" << endl;
+  //cout << "socket accept" << endl;
   sockaddr_in raddr;
   memset(&raddr, 0, sizeof(raddr));
   socklen_t rsz = sizeof(raddr);
@@ -141,8 +157,13 @@ int Service::handleAccept()
     return -1;
   }
   cout << "addr " << inet_ntoa(raddr.sin_addr) << ":" << ntohs(raddr.sin_port) << endl;
-  //SetNonBlock(cfd);
-  mWebSockets.try_emplace(cfd, new WebSocket(cfd));
+  if (-1 == SetNonBlock(cfd)) {
+    return -1;
+  }
+  Group *g = new Group;
+  g->ws = new WebSocket(cfd);
+  g->game = nullptr;
+  mGroups.try_emplace(cfd, g);
   UpdateEvents(mEpollFD, cfd, EPOLLIN | EPOLLET, EPOLL_CTL_ADD);
   return 0;
 }
@@ -150,14 +171,94 @@ int Service::handleAccept()
 int Service::handleRead(int fd)
 {
   try {
-    WebSocket *s = mWebSockets.at(fd);
+    Group *g = mGroups.at(fd);
+    WebSocket *s = g->ws;
+    Game *game = g->game;
+    /*string out;
+    int ret = s->Read(out);
+    if (2 == ret) { // close
+      return ret;
+    } else if (3 == ret) {
+      cerr << "read boom" << endl;
+      return ret;
+    }
+    cout << "recv:" << out << endl;
+    ret = s->Write(out); // echo
+    cout << "write:" << ret << endl;*/
     if (s->IsHandShaked()) {
       string command;
       int ret = s->Read(command);
       if (0 != ret) {
         return ret;
       }
-      cout << "command:" << command << endl;
+      if ("join" == command) {
+        ;
+      } else if ("begin" == command) {
+        if (nullptr == game) {
+          game = new Game;
+          g->game = game;
+        }
+        game->Run();
+        mTimer.StartTimer(100, [this, game, s]() {
+                                 if (game->IsOver()) {
+                                   mTimer.Expire();
+                                   return;
+                                 }
+                                 string cnt(game->GetJson());
+                                 if (cnt.empty()) {
+                                   cout << "empty json" << endl;
+                                 } else {
+                                   int ret = s->Write(cnt);
+                                   if (2 == ret) {
+                                     // should close
+                                     return;
+                                   } else if (3 == ret) {
+                                     // error
+                                     return;
+                                   }
+                                 }
+                               });
+      } else if ("right" == command) {
+        game->addOperate(MoveRight);
+      } else if ("left" == command) {
+        game->addOperate(MoveLeft);
+      } else if ("down" == command) {
+        game->addOperate(MoveDown);
+      } else if ("rotate" == command) {
+        game->addOperate(MoveRotate);
+      } else if ("pause" == command) {
+        mTimer.Expire();
+        game->Pause();
+      } else if ("continue" == command) {
+        mTimer.StartTimer(100, [this, game, s]() {
+                                 if (game->IsOver()) {
+                                   mTimer.Expire();
+                                   return;
+                                 }
+                                 string cnt(game->GetJson());
+                                 if (cnt.empty()) {
+                                   cout << "empty json" << endl;
+                                 } else {
+                                   int ret = s->Write(cnt);
+                                   if (2 == ret) {
+                                     // should close
+                                     return;
+                                   } else if (3 == ret) {
+                                     // error
+                                     return;
+                                   }
+                                 }
+                               });
+        game->Continue();
+      } else if ("close" == command) {
+        return 2;
+      } else {
+        cout << command.length() << " unknow command:" << command << endl;
+        command = "";
+        ret = s->Read(command);
+        cout << ret << " len:" << command.length() << " str:" << command << endl;
+        //return 3;
+      }
     } else {
       int ret = s->Handshake();
       if (0 != ret) {

@@ -20,7 +20,4 @@ private:
   int mFD;
 };
 
-int SetNonBlock(int fd);
-int UpdateEvents(int efd, int fd, int events, int op);
-
 #endif//__SOCKET_HPP__

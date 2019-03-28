@@ -1,7 +1,9 @@
 #ifndef __SERVICE_HPP__
 #define __SERVICE_HPP__
 
+#include "timer.hpp"
 #include "websocket.hpp"
+#include "game.hpp"
 #include <string>
 #include <mutex>
 #include <map>
@@ -9,6 +11,11 @@
 using std::string;
 using std::mutex;
 using std::map;
+
+struct Group {
+  WebSocket *ws;
+  Game *game;
+};
 
 class Service
 {
@@ -34,7 +41,9 @@ private:
   string mSendStr;
   size_t mSended;
   mutex mSendMtx;
-  map<int, WebSocket *> mWebSockets;
+  map<int, Group *> mGroups;
+  mutex mMapMtx;
+  Timer mTimer;
 
   class GC
   {
