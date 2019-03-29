@@ -4,23 +4,25 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"time"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 func main() {
 	var wg sync.WaitGroup
-	for i:=0; i<10; i++ {
+	for i := 0; i < 1024*4; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			tasktcp(i)
 			fmt.Println("dial done", i)
 		}(i)
+		time.Sleep(1 * time.Millisecond)
 	}
 	wg.Wait()
+	fmt.Println("done")
 	return
 }
 
@@ -67,10 +69,10 @@ func tasktcp(i int) {
 		return
 	}
 	defer conn.Close()
-	time.Sleep(time.Duration((i+1)%10)*time.Second)
-	fmt.Println("dial", i)
-	//time.Sleep(time.Duration(10*time.Second))
-	//return
+	//time.Sleep(time.Duration((i+1)%10+1) * time.Millisecond)
+	//fmt.Println("dial", i)
+	time.Sleep(time.Duration(1 * time.Millisecond))
+	return
 	done := make(chan string)
 	go handleWrite(conn, done)
 	go handleRead(conn, done)
@@ -81,24 +83,25 @@ func tasktcp(i int) {
 }
 
 func handleWrite(conn net.Conn, done chan string) {
-	for i := 10; i > 0; i-- {
+	for i := 29; i > 0; i-- {
 		_, e := conn.Write([]byte("hello " + strconv.Itoa(i) + ""))
 		if nil != e {
 			fmt.Println("send error:", e)
 			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(1*time.Millisecond + 1)
 	}
 	done <- "sent"
 }
 
 func handleRead(conn net.Conn, done chan string) {
+	//time.Sleep(1 * time.Second)
 	buf := make([]byte, 1024)
 	reqLen, err := conn.Read(buf)
 	if nil != err {
-		fmt.Println("read error:", err)
+		fmt.Println("read error:", err, reqLen)
 		return
 	}
-	fmt.Println(reqLen, "recv:", string(buf[:reqLen-1]))
+	//fmt.Println(reqLen, "recv:", string(buf[:reqLen-1]))
 	done <- "read"
 }

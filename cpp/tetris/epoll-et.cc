@@ -37,14 +37,23 @@ void setNonBlock(int fd) {
   exit_if(r < 0, "fcntl failed");
 }
 
-void updateEvents(int efd, int fd, int events, int op) {
+int updateEvents(int efd, int fd, int events, int op) {
   struct epoll_event ev;
   memset(&ev, 0, sizeof(ev));
   ev.events = events;
   ev.data.fd = fd;
   //printf("%s fd %d events read %d write %d\n", op == EPOLL_CTL_MOD ? "mod" : "add", fd, ev.events & EPOLLIN, ev.events & EPOLLOUT);
   int r = epoll_ctl(efd, op, fd, &ev);
-  exit_if(r, "epoll_ctl failed");
+  if (0 != r) {
+    if (ENOENT == errno) {
+      // 2 no such file or directory
+    } else {
+    }
+    cout << errno << " ctl " << fd << endl;
+    return r;
+  }
+  //exit_if(r, "epoll_ctl failed");
+  return 0;
 }
 
 void handleAccept(int efd, int fd) {
@@ -56,9 +65,10 @@ void handleAccept(int efd, int fd) {
   socklen_t alen = sizeof(peer);
   int r = getpeername(cfd, (sockaddr *) &peer, &alen);
   exit_if(r < 0, "getpeername failed");
-  printf("%2d accept a connection from %s:%d\n", cfd, inet_ntoa(raddr.sin_addr), ntohs(raddr.sin_port));
+  //printf("%3d accept a connection from %s:%d", cfd, inet_ntoa(raddr.sin_addr), ntohs(raddr.sin_port));
+  //cout << endl;
   setNonBlock(cfd);
-  updateEvents(efd, cfd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_ADD);
+  updateEvents(efd, cfd, EPOLLIN | EPOLLONESHOT | EPOLLET, EPOLL_CTL_ADD);
 }
 struct Con {
   string readed;
@@ -119,19 +129,29 @@ int handleRead(int efd, int fd, void *vptr, size_t n) {
   while (nleft > 0) {
     nread = (int)read(fd, ptr, nleft);
     if (nread < 0) {
+      if (EAGAIN == errno) {
+        break; // errno is EAGAIN;
+      }
       if (EINTR == errno) {
         nread = 0; // call read again;
+        cout << "read again" << endl;
         continue;
+      } else if (ECONNRESET == errno) { // connection reset , just close it
+        //cout << "n-nleft " << n-nleft << endl;
+        break;
       } else {
-        return -1; // maybe errno is EAGAIN;
+        //cout << strerror(errno) << " read error " << errno << endl;
+        return -1;
       }
     } else if (0 == nread) {
+      //cout << fd << " eof " << n-nleft << endl;
       break; // EOF;
     }
     readed.append(ptr, nread);
     nleft -= nread;
     ptr += nread;
   }
+  //cout << "readed : " << n-nleft << endl;
   return (n-nleft); // return >= 0;
 
   char buf[4096];
@@ -173,7 +193,7 @@ int handleWrite(int efd, int fd) {
 threadpool executor{20};
 
 void loop_once(int efd, int lfd, int waitms) {
-  const int kMaxEvents = 20;
+  const int kMaxEvents = 100;
   struct epoll_event activeEvs[100];
   int n = epoll_wait(efd, activeEvs, kMaxEvents, waitms);
   if (output_log)
@@ -181,28 +201,43 @@ void loop_once(int efd, int lfd, int waitms) {
   for (int i = 0; i < n; i++) {
     int fd = activeEvs[i].data.fd;
     int events = activeEvs[i].events;
-    if (events & (EPOLLIN | EPOLLERR)) {
+    if (events & EPOLLERR) {
+      cout << fd << " it's epollerr event " << events << endl;
+      close(fd);
+    } else if (events & (EPOLLIN)) {
       if (fd == lfd) {
         handleAccept(efd, fd);
       } else {
         executor.Commit([](int efd, int fd){
-                          char buf[1024+1] = {0};
-                          int ret = handleRead(efd, fd, buf, 1024);
-                          //cout << "close " << fd << endl;
-                          //close(fd);
-                          if (ret < 0 && EAGAIN != errno){
-                            updateEvents(efd, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_DEL);
-                            close(fd);
-                            cons.erase(fd);
-                          } else if (0 == ret) {
-                            updateEvents(efd, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_DEL);
-                            close(fd);
-                            cons.erase(fd);
-                          } else if (ret > 0) {
-                            cout << ret << " buf:" << buf << endl;
-                            updateEvents(efd, fd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_MOD);
-                          } else {
-                            cout << ret << " " << errno << " boom :" << buf << endl;
+                          try {
+                            char buf[1024+1] = {0};
+                            int ret = handleRead(efd, fd, buf, 1024);
+                            if (ret < 0 && EAGAIN != errno){ // error happend
+                              cout << "error happend " << errno << endl;
+                              if (EBADF == errno) {
+                                // 9 bad file number
+                              } else {
+                                ret = updateEvents(efd, fd, EPOLLIN | EPOLLONESHOT | EPOLLET, EPOLL_CTL_DEL);
+                                if (0 == ret) {
+                                  close(fd);
+                                  //cons.erase(fd);
+                                }
+                              }
+                            } else if (0 == ret) { // client close
+                              //cout << fd << "will del and close" << endl;
+                              ret = updateEvents(efd, fd, EPOLLIN | EPOLLONESHOT | EPOLLET, EPOLL_CTL_DEL);
+                              if (0 == ret) {
+                                close(fd);
+                                //cons.erase(fd);
+                              }
+                            } else if (ret > 0) { // normal
+                              //cout << fd << " buf:" << buf << endl;
+                              updateEvents(efd, fd, EPOLLIN | EPOLLONESHOT | EPOLLET, EPOLL_CTL_MOD);
+                            } else {
+                              cout << ret << " " << errno << " boom :" << buf << endl;
+                            }
+                          } catch (std::exception &e) {
+                            cerr << "exce:" << e.what() << endl;
                           }
                         }, efd, fd);
         continue;
@@ -211,7 +246,7 @@ void loop_once(int efd, int lfd, int waitms) {
     } else if (events & EPOLLOUT) {
       executor.Commit([](int efd, int fd){
                         int ret = handleWrite(efd, fd);
-                        cout << "write ret:" << ret << endl;
+                        //cout << fd << " write ret:" << ret << endl;
                         updateEvents(efd, fd, EPOLLIN | EPOLLET, EPOLL_CTL_MOD);
                         //printf("handling epollout\n");
                       }, efd, fd);
